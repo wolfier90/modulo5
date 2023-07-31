@@ -1,0 +1,29 @@
+name: Docker Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan 44.203.126.8 >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        run: |
+          ssh -i ~/.ssh/id_rsa ec2-user@44.203.126.8 'cd ~/my-cv-online && git pull'
+          ssh -i ~/.ssh/id_rsa ec2-user@44.203.126.8 'cd ~/my-cv-online && docker build -t my-cv .'
+          ssh -i ~/.ssh/id_rsa ec2-user@44.203.126.8 'docker stop my-cv || true'
+          ssh -i ~/.ssh/id_rsa ec2-user@44.203.126.8 'docker rm my-cv || true'
+          ssh -i ~/.ssh/id_rsa ec2-user@44.203.126.8 'docker run -d -p 80:80 --name my-cv my-cv'
